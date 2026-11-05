@@ -43,9 +43,9 @@ public class PrivacySchemaCompatibilityRunner implements ApplicationRunner {
 
     private void ensurePersonsColumns(Connection connection) throws SQLException {
         Set<String> columns = columns(connection, "persons");
-        addColumnIfMissing(connection, columns, "persons", "description", "description varchar(3000)");
-        addColumnIfMissing(connection, columns, "persons", "description_private", "description_private boolean not null default 0");
-        addColumnIfMissing(connection, columns, "persons", "description_owner_username", "description_owner_username varchar(255)");
+        addColumnIfMissing(connection, columns, "persons", "description");
+        addColumnIfMissing(connection, columns, "persons", "description_private");
+        addColumnIfMissing(connection, columns, "persons", "description_owner_username");
         createTableIfMissing(connection, """
                 create table if not exists person_private_descriptions (
                     person_id bigint not null,
@@ -54,21 +54,15 @@ public class PrivacySchemaCompatibilityRunner implements ApplicationRunner {
                     primary key (person_id, username)
                 )
                 """);
-        migrateLegacyPrivateDescriptions(connection,
-                "persons",
-                "person_private_descriptions",
-                "person_id",
-                "description_private",
-                "description_owner_username",
-                "description");
+        migrateLegacyPersonDescriptions(connection);
     }
 
     private void ensureEventsColumns(Connection connection) throws SQLException {
         Set<String> columns = columns(connection, "events");
-        addColumnIfMissing(connection, columns, "events", "about_private", "about_private boolean not null default 0");
-        addColumnIfMissing(connection, columns, "events", "about_owner_username", "about_owner_username varchar(255)");
-        addColumnIfMissing(connection, columns, "events", "contacted_person_id", "contacted_person_id bigint");
-        addColumnIfMissing(connection, columns, "events", "event_session", "event_session varchar(255)");
+        addColumnIfMissing(connection, columns, "events", "about_private");
+        addColumnIfMissing(connection, columns, "events", "about_owner_username");
+        addColumnIfMissing(connection, columns, "events", "contacted_person_id");
+        addColumnIfMissing(connection, columns, "events", "event_session");
         createTableIfMissing(connection, """
                 create table if not exists event_private_descriptions (
                     event_id bigint not null,
@@ -77,34 +71,27 @@ public class PrivacySchemaCompatibilityRunner implements ApplicationRunner {
                     primary key (event_id, username)
                 )
                 """);
-        migrateLegacyPrivateDescriptions(connection,
-                "events",
-                "event_private_descriptions",
-                "event_id",
-                "about_private",
-                "about_owner_username",
-                "about");
+        migrateLegacyEventDescriptions(connection);
         ensureEventContactedPersonsTable(connection);
         ensureEventTypeConstraint(connection);
     }
 
     private void ensureFinanceColumns(Connection connection) throws SQLException {
         Set<String> columns = columns(connection, "financial_transactions");
-        addColumnIfMissing(connection, columns, "financial_transactions", "amount_private", "amount_private boolean not null default 0");
-        addColumnIfMissing(connection, columns, "financial_transactions", "amount_owner_username", "amount_owner_username varchar(255)");
+        addColumnIfMissing(connection, columns, "financial_transactions", "amount_private");
+        addColumnIfMissing(connection, columns, "financial_transactions", "amount_owner_username");
     }
 
     private void ensureGroupColumns(Connection connection) throws SQLException {
         Set<String> columns = columns(connection, "church_groups");
-        addColumnIfMissing(connection, columns, "church_groups", "whatsapp_link", "whatsapp_link varchar(1000)");
+        addColumnIfMissing(connection, columns, "church_groups", "whatsapp_link");
     }
 
     private Set<String> columns(Connection connection, String table) throws SQLException {
         Set<String> columns = new HashSet<>();
-        try (Statement statement = connection.createStatement();
-                ResultSet result = statement.executeQuery("PRAGMA table_info(" + sqliteIdentifier(table) + ")")) {
+        try (ResultSet result = connection.getMetaData().getColumns(null, null, table, null)) {
             while (result.next()) {
-                columns.add(result.getString("name"));
+                columns.add(result.getString("COLUMN_NAME"));
             }
         }
         return columns;
@@ -113,13 +100,33 @@ public class PrivacySchemaCompatibilityRunner implements ApplicationRunner {
     private void addColumnIfMissing(Connection connection,
             Set<String> columns,
             String table,
-            String column,
-            String definition) throws SQLException {
+            String column) throws SQLException {
         if (columns.contains(column)) {
             return;
         }
         try (Statement statement = connection.createStatement()) {
-            statement.execute("ALTER TABLE " + sqliteIdentifier(table) + " ADD COLUMN " + definition);
+            switch (table + "." + column) {
+                case "persons.description" -> statement.execute("ALTER TABLE persons ADD COLUMN description varchar(3000)");
+                case "persons.description_private" -> statement.execute(
+                        "ALTER TABLE persons ADD COLUMN description_private boolean not null default 0");
+                case "persons.description_owner_username" -> statement.execute(
+                        "ALTER TABLE persons ADD COLUMN description_owner_username varchar(255)");
+                case "events.about_private" -> statement.execute(
+                        "ALTER TABLE events ADD COLUMN about_private boolean not null default 0");
+                case "events.about_owner_username" -> statement.execute(
+                        "ALTER TABLE events ADD COLUMN about_owner_username varchar(255)");
+                case "events.contacted_person_id" -> statement.execute(
+                        "ALTER TABLE events ADD COLUMN contacted_person_id bigint");
+                case "events.event_session" -> statement.execute(
+                        "ALTER TABLE events ADD COLUMN event_session varchar(255)");
+                case "financial_transactions.amount_private" -> statement.execute(
+                        "ALTER TABLE financial_transactions ADD COLUMN amount_private boolean not null default 0");
+                case "financial_transactions.amount_owner_username" -> statement.execute(
+                        "ALTER TABLE financial_transactions ADD COLUMN amount_owner_username varchar(255)");
+                case "church_groups.whatsapp_link" -> statement.execute(
+                        "ALTER TABLE church_groups ADD COLUMN whatsapp_link varchar(1000)");
+                default -> throw new IllegalArgumentException("Migrare SQLite necunoscută: " + table + "." + column);
+            }
         }
         columns.add(column);
     }
@@ -290,52 +297,45 @@ public class PrivacySchemaCompatibilityRunner implements ApplicationRunner {
         }
     }
 
-    private void migrateLegacyPrivateDescriptions(Connection connection,
-            String sourceTable,
-            String targetTable,
-            String targetIdColumn,
-            String privateColumn,
-            String ownerColumn,
-            String descriptionColumn) throws SQLException {
+    private void migrateLegacyPersonDescriptions(Connection connection) throws SQLException {
         String sql = """
-                insert into %s (%s, username, description)
-                select id, %s, %s
-                from %s
-                where %s = 1
-                  and %s is not null
-                  and trim(%s) <> ''
-                  and %s is not null
-                  and trim(%s) <> ''
+                insert into person_private_descriptions (person_id, username, description)
+                select id, description_owner_username, description
+                from persons
+                where description_private = 1
+                  and description_owner_username is not null
+                  and trim(description_owner_username) <> ''
+                  and description is not null
+                  and trim(description) <> ''
                   and not exists (
-                    select 1 from %s existing
-                    where existing.%s = %s.id
-                      and lower(existing.username) = lower(%s.%s)
+                    select 1 from person_private_descriptions existing
+                    where existing.person_id = persons.id
+                      and lower(existing.username) = lower(persons.description_owner_username)
                   )
-                """.formatted(
-                sqliteIdentifier(targetTable),
-                sqliteIdentifier(targetIdColumn),
-                sqliteIdentifier(ownerColumn),
-                sqliteIdentifier(descriptionColumn),
-                sqliteIdentifier(sourceTable),
-                sqliteIdentifier(privateColumn),
-                sqliteIdentifier(ownerColumn),
-                sqliteIdentifier(ownerColumn),
-                sqliteIdentifier(descriptionColumn),
-                sqliteIdentifier(descriptionColumn),
-                sqliteIdentifier(targetTable),
-                sqliteIdentifier(targetIdColumn),
-                sqliteIdentifier(sourceTable),
-                sqliteIdentifier(sourceTable),
-                sqliteIdentifier(ownerColumn));
+                """;
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate(sql);
         }
     }
 
-    private String sqliteIdentifier(String identifier) {
-        if (identifier == null || !identifier.matches("[A-Za-z_][A-Za-z0-9_]*")) {
-            throw new IllegalArgumentException("Identificator SQLite invalid: " + identifier);
+    private void migrateLegacyEventDescriptions(Connection connection) throws SQLException {
+        String sql = """
+                insert into event_private_descriptions (event_id, username, description)
+                select id, about_owner_username, about
+                from events
+                where about_private = 1
+                  and about_owner_username is not null
+                  and trim(about_owner_username) <> ''
+                  and about is not null
+                  and trim(about) <> ''
+                  and not exists (
+                    select 1 from event_private_descriptions existing
+                    where existing.event_id = events.id
+                      and lower(existing.username) = lower(events.about_owner_username)
+                  )
+                """;
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(sql);
         }
-        return "\"" + identifier + "\"";
     }
 }

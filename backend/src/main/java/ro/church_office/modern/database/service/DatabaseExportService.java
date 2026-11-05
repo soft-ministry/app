@@ -30,26 +30,86 @@ public class DatabaseExportService {
     private static final DateTimeFormatter FILENAME_TIMESTAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private static final Set<String> REQUIRED_TABLES = Set.of("churches", "user_accounts", "app_settings");
     private static final List<ReferenceCheck> REFERENCE_CHECKS = List.of(
-            new ReferenceCheck("events", "group_id", "church_groups", "id", "evenimente → grupuri"),
-            new ReferenceCheck("events", "implemented_by_id", "persons", "id", "evenimente → persoane responsabile"),
-            new ReferenceCheck("events", "contacted_person_id", "persons", "id", "evenimente → persoane contactate"),
-            new ReferenceCheck("event_contacted_persons", "event_id", "events", "id", "persoane contactate → evenimente"),
-            new ReferenceCheck("event_contacted_persons", "person_id", "persons", "id", "persoane contactate → persoane"),
-            new ReferenceCheck("event_responsibles", "event_id", "events", "id", "responsabili → evenimente"),
-            new ReferenceCheck("event_responsibles", "person_id", "persons", "id", "responsabili → persoane"),
-            new ReferenceCheck("event_attachments", "event_id", "events", "id", "atașamente → evenimente"),
-            new ReferenceCheck("event_private_descriptions", "event_id", "events", "id", "descrieri private → evenimente"),
-            new ReferenceCheck("person_private_descriptions", "person_id", "persons", "id", "descrieri private → persoane"),
-            new ReferenceCheck("church_groups", "leader_id", "persons", "id", "grupuri → lideri"),
-            new ReferenceCheck("church_group_members", "group_id", "church_groups", "id", "membri grupuri → grupuri"),
-            new ReferenceCheck("church_group_members", "person_id", "persons", "id", "membri grupuri → persoane"),
-            new ReferenceCheck("family_members", "family_id", "families", "id", "membri familii → familii"),
-            new ReferenceCheck("family_members", "person_id", "persons", "id", "membri familii → persoane"),
-            new ReferenceCheck("family_relationships", "family_id", "families", "id", "relații familii → familii"),
-            new ReferenceCheck("family_relationships", "person_a_id", "persons", "id", "relații familii → persoane"),
-            new ReferenceCheck("family_relationships", "person_b_id", "persons", "id", "relații familii → persoane"),
-            new ReferenceCheck("social_support_cases", "person_id", "persons", "id", "sprijin social → persoane"),
-            new ReferenceCheck("social_support_cases", "assigned_to_id", "persons", "id", "sprijin social → responsabili"));
+            new ReferenceCheck("events", "church_groups",
+                    "SELECT COUNT(*) FROM events child LEFT JOIN church_groups parent ON parent.id = child.group_id "
+                            + "WHERE child.group_id IS NOT NULL AND parent.id IS NULL",
+                    "evenimente → grupuri"),
+            new ReferenceCheck("events", "persons",
+                    "SELECT COUNT(*) FROM events child LEFT JOIN persons parent ON parent.id = child.implemented_by_id "
+                            + "WHERE child.implemented_by_id IS NOT NULL AND parent.id IS NULL",
+                    "evenimente → persoane responsabile"),
+            new ReferenceCheck("events", "persons",
+                    "SELECT COUNT(*) FROM events child LEFT JOIN persons parent ON parent.id = child.contacted_person_id "
+                            + "WHERE child.contacted_person_id IS NOT NULL AND parent.id IS NULL",
+                    "evenimente → persoane contactate"),
+            new ReferenceCheck("event_contacted_persons", "events",
+                    "SELECT COUNT(*) FROM event_contacted_persons child LEFT JOIN events parent ON parent.id = child.event_id "
+                            + "WHERE child.event_id IS NOT NULL AND parent.id IS NULL",
+                    "persoane contactate → evenimente"),
+            new ReferenceCheck("event_contacted_persons", "persons",
+                    "SELECT COUNT(*) FROM event_contacted_persons child LEFT JOIN persons parent ON parent.id = child.person_id "
+                            + "WHERE child.person_id IS NOT NULL AND parent.id IS NULL",
+                    "persoane contactate → persoane"),
+            new ReferenceCheck("event_responsibles", "events",
+                    "SELECT COUNT(*) FROM event_responsibles child LEFT JOIN events parent ON parent.id = child.event_id "
+                            + "WHERE child.event_id IS NOT NULL AND parent.id IS NULL",
+                    "responsabili → evenimente"),
+            new ReferenceCheck("event_responsibles", "persons",
+                    "SELECT COUNT(*) FROM event_responsibles child LEFT JOIN persons parent ON parent.id = child.person_id "
+                            + "WHERE child.person_id IS NOT NULL AND parent.id IS NULL",
+                    "responsabili → persoane"),
+            new ReferenceCheck("event_attachments", "events",
+                    "SELECT COUNT(*) FROM event_attachments child LEFT JOIN events parent ON parent.id = child.event_id "
+                            + "WHERE child.event_id IS NOT NULL AND parent.id IS NULL",
+                    "atașamente → evenimente"),
+            new ReferenceCheck("event_private_descriptions", "events",
+                    "SELECT COUNT(*) FROM event_private_descriptions child LEFT JOIN events parent ON parent.id = child.event_id "
+                            + "WHERE child.event_id IS NOT NULL AND parent.id IS NULL",
+                    "descrieri private → evenimente"),
+            new ReferenceCheck("person_private_descriptions", "persons",
+                    "SELECT COUNT(*) FROM person_private_descriptions child LEFT JOIN persons parent ON parent.id = child.person_id "
+                            + "WHERE child.person_id IS NOT NULL AND parent.id IS NULL",
+                    "descrieri private → persoane"),
+            new ReferenceCheck("church_groups", "persons",
+                    "SELECT COUNT(*) FROM church_groups child LEFT JOIN persons parent ON parent.id = child.leader_id "
+                            + "WHERE child.leader_id IS NOT NULL AND parent.id IS NULL",
+                    "grupuri → lideri"),
+            new ReferenceCheck("church_group_members", "church_groups",
+                    "SELECT COUNT(*) FROM church_group_members child LEFT JOIN church_groups parent ON parent.id = child.group_id "
+                            + "WHERE child.group_id IS NOT NULL AND parent.id IS NULL",
+                    "membri grupuri → grupuri"),
+            new ReferenceCheck("church_group_members", "persons",
+                    "SELECT COUNT(*) FROM church_group_members child LEFT JOIN persons parent ON parent.id = child.person_id "
+                            + "WHERE child.person_id IS NOT NULL AND parent.id IS NULL",
+                    "membri grupuri → persoane"),
+            new ReferenceCheck("family_members", "families",
+                    "SELECT COUNT(*) FROM family_members child LEFT JOIN families parent ON parent.id = child.family_id "
+                            + "WHERE child.family_id IS NOT NULL AND parent.id IS NULL",
+                    "membri familii → familii"),
+            new ReferenceCheck("family_members", "persons",
+                    "SELECT COUNT(*) FROM family_members child LEFT JOIN persons parent ON parent.id = child.person_id "
+                            + "WHERE child.person_id IS NOT NULL AND parent.id IS NULL",
+                    "membri familii → persoane"),
+            new ReferenceCheck("family_relationships", "families",
+                    "SELECT COUNT(*) FROM family_relationships child LEFT JOIN families parent ON parent.id = child.family_id "
+                            + "WHERE child.family_id IS NOT NULL AND parent.id IS NULL",
+                    "relații familii → familii"),
+            new ReferenceCheck("family_relationships", "persons",
+                    "SELECT COUNT(*) FROM family_relationships child LEFT JOIN persons parent ON parent.id = child.person_a_id "
+                            + "WHERE child.person_a_id IS NOT NULL AND parent.id IS NULL",
+                    "relații familii → persoane"),
+            new ReferenceCheck("family_relationships", "persons",
+                    "SELECT COUNT(*) FROM family_relationships child LEFT JOIN persons parent ON parent.id = child.person_b_id "
+                            + "WHERE child.person_b_id IS NOT NULL AND parent.id IS NULL",
+                    "relații familii → persoane"),
+            new ReferenceCheck("social_support_cases", "persons",
+                    "SELECT COUNT(*) FROM social_support_cases child LEFT JOIN persons parent ON parent.id = child.person_id "
+                            + "WHERE child.person_id IS NOT NULL AND parent.id IS NULL",
+                    "sprijin social → persoane"),
+            new ReferenceCheck("social_support_cases", "persons",
+                    "SELECT COUNT(*) FROM social_support_cases child LEFT JOIN persons parent ON parent.id = child.assigned_to_id "
+                            + "WHERE child.assigned_to_id IS NOT NULL AND parent.id IS NULL",
+                    "sprijin social → responsabili"));
 
     private final DataSource dataSource;
     private final String datasourceUrl;
@@ -180,16 +240,7 @@ public class DatabaseExportService {
             if (!tableExists(statement, reference.childTable()) || !tableExists(statement, reference.parentTable())) {
                 continue;
             }
-            String childTable = sqliteIdentifier(reference.childTable());
-            String childColumn = sqliteIdentifier(reference.childColumn());
-            String parentTable = sqliteIdentifier(reference.parentTable());
-            String parentColumn = sqliteIdentifier(reference.parentColumn());
-            String sql = "SELECT COUNT(*) FROM " + childTable
-                    + " child LEFT JOIN " + parentTable + " parent ON parent."
-                    + parentColumn + " = child." + childColumn
-                    + " WHERE child." + childColumn + " IS NOT NULL"
-                    + " AND parent." + parentColumn + " IS NULL";
-            try (ResultSet result = statement.executeQuery(sql)) {
+            try (ResultSet result = statement.executeQuery(reference.sql())) {
                 if (result.next() && result.getLong(1) > 0) {
                     throw new IllegalArgumentException("Fișierul importat conține referințe invalide ("
                             + reference.description() + "). Repară baza înainte de import.");
@@ -247,18 +298,10 @@ public class DatabaseExportService {
         }
     }
 
-    private String sqliteIdentifier(String identifier) {
-        if (identifier == null || !identifier.matches("[A-Za-z_][A-Za-z0-9_]*")) {
-            throw new IllegalArgumentException("Identificator SQLite invalid: " + identifier);
-        }
-        return "\"" + identifier + "\"";
-    }
-
     private record ReferenceCheck(
             String childTable,
-            String childColumn,
             String parentTable,
-            String parentColumn,
+            String sql,
             String description) {
     }
 }
