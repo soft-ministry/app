@@ -1,0 +1,47 @@
+server:
+  port: 8081
+
+modern:
+  ministry:
+    data-dir: ${MODERN_MINISTRY_DATA_DIR:${user.home}/.modern-ministry/data}
+
+spring:
+  application:
+    name: modern-ministry-backend
+  datasource:
+    url: jdbc:sqlite:${modern.ministry.data-dir}/modern-ministry.sqlite
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.community.dialect.SQLiteDialect
+        format_sql: true
+  servlet:
+    multipart:
+      max-file-size: 512MB
+      max-request-size: 512MB
+
+app:
+  security:
+    jwt-secret: "change-this-development-secret-change-this-development-secret"
+    jwt-expiration-minutes: 480
+    cors-allowed-origins: "http://localhost:4200,http://127.0.0.1:4200,http://*:4200"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: postgres
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/modern_ministry}
+    username: ${DATABASE_USERNAME:modern_ministry}
+    password: ${DATABASE_PASSWORD:modern_ministry}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
