@@ -2,6 +2,7 @@ package ro.church_office.modern.common;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -101,7 +102,7 @@ public class PrivacySchemaCompatibilityRunner implements ApplicationRunner {
     private Set<String> columns(Connection connection, String table) throws SQLException {
         Set<String> columns = new HashSet<>();
         try (Statement statement = connection.createStatement();
-                ResultSet result = statement.executeQuery("PRAGMA table_info(" + table + ")")) {
+                ResultSet result = statement.executeQuery("PRAGMA table_info(" + sqliteIdentifier(table) + ")")) {
             while (result.next()) {
                 columns.add(result.getString("name"));
             }
@@ -118,7 +119,7 @@ public class PrivacySchemaCompatibilityRunner implements ApplicationRunner {
             return;
         }
         try (Statement statement = connection.createStatement()) {
-            statement.execute("ALTER TABLE " + table + " ADD COLUMN " + definition);
+            statement.execute("ALTER TABLE " + sqliteIdentifier(table) + " ADD COLUMN " + definition);
         }
         columns.add(column);
     }
@@ -176,10 +177,12 @@ public class PrivacySchemaCompatibilityRunner implements ApplicationRunner {
     }
 
     private String tableSql(Connection connection, String table) throws SQLException {
-        try (Statement statement = connection.createStatement();
-                ResultSet result = statement.executeQuery(
-                        "SELECT sql FROM sqlite_master WHERE type='table' AND name='" + table + "'")) {
-            return result.next() ? result.getString(1) : null;
+        try (PreparedStatement statement = connection.prepareStatement(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name=?")) {
+            statement.setString(1, table);
+            try (ResultSet result = statement.executeQuery()) {
+                return result.next() ? result.getString(1) : null;
+            }
         }
     }
 
@@ -309,23 +312,30 @@ public class PrivacySchemaCompatibilityRunner implements ApplicationRunner {
                       and lower(existing.username) = lower(%s.%s)
                   )
                 """.formatted(
-                targetTable,
-                targetIdColumn,
-                ownerColumn,
-                descriptionColumn,
-                sourceTable,
-                privateColumn,
-                ownerColumn,
-                ownerColumn,
-                descriptionColumn,
-                descriptionColumn,
-                targetTable,
-                targetIdColumn,
-                sourceTable,
-                sourceTable,
-                ownerColumn);
+                sqliteIdentifier(targetTable),
+                sqliteIdentifier(targetIdColumn),
+                sqliteIdentifier(ownerColumn),
+                sqliteIdentifier(descriptionColumn),
+                sqliteIdentifier(sourceTable),
+                sqliteIdentifier(privateColumn),
+                sqliteIdentifier(ownerColumn),
+                sqliteIdentifier(ownerColumn),
+                sqliteIdentifier(descriptionColumn),
+                sqliteIdentifier(descriptionColumn),
+                sqliteIdentifier(targetTable),
+                sqliteIdentifier(targetIdColumn),
+                sqliteIdentifier(sourceTable),
+                sqliteIdentifier(sourceTable),
+                sqliteIdentifier(ownerColumn));
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate(sql);
         }
+    }
+
+    private String sqliteIdentifier(String identifier) {
+        if (identifier == null || !identifier.matches("[A-Za-z_][A-Za-z0-9_]*")) {
+            throw new IllegalArgumentException("Identificator SQLite invalid: " + identifier);
+        }
+        return "\"" + identifier + "\"";
     }
 }

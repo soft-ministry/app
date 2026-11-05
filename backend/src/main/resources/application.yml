@@ -21,8 +21,8 @@ spring:
         format_sql: true
   servlet:
     multipart:
-      max-file-size: 512MB
-      max-request-size: 512MB
+      max-file-size: ${MODERN_MINISTRY_MAX_FILE_SIZE:8MB}
+      max-request-size: ${MODERN_MINISTRY_MAX_REQUEST_SIZE:8MB}
 
 app:
   security:

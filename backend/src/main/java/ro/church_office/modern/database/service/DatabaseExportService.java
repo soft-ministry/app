@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -63,7 +64,9 @@ public class DatabaseExportService {
 
         Path exportPath = null;
         try {
-            exportPath = Files.createTempFile("modern-ministry-db-", ".sqlite");
+            Path dataDir = currentDatabasePath().getParent();
+            Files.createDirectories(dataDir);
+            exportPath = Files.createTempFile(dataDir, "modern-ministry-db-", ".sqlite");
             Files.deleteIfExists(exportPath);
             backupCurrentDatabaseTo(exportPath);
             validateImportedDatabase(exportPath);
@@ -133,8 +136,9 @@ public class DatabaseExportService {
     private void backupCurrentDatabaseTo(Path target) throws SQLException, IOException {
         Files.deleteIfExists(target);
         try (Connection connection = dataSource.getConnection();
-                Statement statement = connection.createStatement()) {
-            statement.execute("VACUUM INTO '" + sqliteLiteral(target.toAbsolutePath().toString()) + "'");
+                PreparedStatement statement = connection.prepareStatement("VACUUM INTO ?")) {
+            statement.setString(1, target.toAbsolutePath().toString());
+            statement.execute();
         }
     }
 
@@ -176,11 +180,15 @@ public class DatabaseExportService {
             if (!tableExists(statement, reference.childTable()) || !tableExists(statement, reference.parentTable())) {
                 continue;
             }
-            String sql = "SELECT COUNT(*) FROM " + reference.childTable()
-                    + " child LEFT JOIN " + reference.parentTable() + " parent ON parent."
-                    + reference.parentColumn() + " = child." + reference.childColumn()
-                    + " WHERE child." + reference.childColumn() + " IS NOT NULL"
-                    + " AND parent." + reference.parentColumn() + " IS NULL";
+            String childTable = sqliteIdentifier(reference.childTable());
+            String childColumn = sqliteIdentifier(reference.childColumn());
+            String parentTable = sqliteIdentifier(reference.parentTable());
+            String parentColumn = sqliteIdentifier(reference.parentColumn());
+            String sql = "SELECT COUNT(*) FROM " + childTable
+                    + " child LEFT JOIN " + parentTable + " parent ON parent."
+                    + parentColumn + " = child." + childColumn
+                    + " WHERE child." + childColumn + " IS NOT NULL"
+                    + " AND parent." + parentColumn + " IS NULL";
             try (ResultSet result = statement.executeQuery(sql)) {
                 if (result.next() && result.getLong(1) > 0) {
                     throw new IllegalArgumentException("Fișierul importat conține referințe invalide ("
@@ -191,9 +199,12 @@ public class DatabaseExportService {
     }
 
     private boolean tableExists(Statement statement, String table) throws SQLException {
-        try (ResultSet result = statement.executeQuery(
-                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '" + table + "'")) {
-            return result.next();
+        try (PreparedStatement query = statement.getConnection().prepareStatement(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")) {
+            query.setString(1, table);
+            try (ResultSet result = query.executeQuery()) {
+                return result.next();
+            }
         }
     }
 
@@ -236,8 +247,11 @@ public class DatabaseExportService {
         }
     }
 
-    private String sqliteLiteral(String value) {
-        return value.replace("'", "''");
+    private String sqliteIdentifier(String identifier) {
+        if (identifier == null || !identifier.matches("[A-Za-z_][A-Za-z0-9_]*")) {
+            throw new IllegalArgumentException("Identificator SQLite invalid: " + identifier);
+        }
+        return "\"" + identifier + "\"";
     }
 
     private record ReferenceCheck(
