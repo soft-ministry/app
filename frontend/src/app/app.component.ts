@@ -3,6 +3,7 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 
 import { AuthService } from './core/auth.service';
+import { APP_VERSION } from './core/app-version';
 import { ChurchSettingsService } from './core/church-settings.service';
 import { LanguageService } from './core/language.service';
 import { AppearanceThemeService } from './core/theme/appearance-theme.service';
@@ -24,11 +25,24 @@ interface BirthdayNotification {
   imports: [RouterOutlet],
   styles: [`
     .app-shell {
+      display: flex;
+      flex-direction: column;
       min-height: 100vh;
     }
 
     .content {
+      flex: 1 0 auto;
       min-width: 0;
+    }
+
+    .app-version-footer {
+      flex: 0 0 auto;
+      margin-top: -2rem;
+      padding: 0 16px 8px;
+      color: var(--app-muted);
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
     }
 
     .login-only {
@@ -123,6 +137,9 @@ interface BirthdayNotification {
         <section class="content">
           <router-outlet />
         </section>
+        <footer class="app-version-footer">
+          {{ language.t('nav.version') }} {{ appVersion }}
+        </footer>
         @if (birthdayNotifications().length > 0) {
           <aside class="birthday-notifications" [attr.aria-label]="language.t('notifications.birthdays')">
             @for (notification of birthdayNotifications(); track notification.id) {
@@ -146,6 +163,7 @@ interface BirthdayNotification {
   `
 })
 export class AppComponent implements OnInit {
+  appVersion = APP_VERSION;
   birthdayNotifications = signal<BirthdayNotification[]>([]);
 
   constructor(

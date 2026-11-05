@@ -37,6 +37,9 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Set application version
+        run: node packaging/set-frontend-version.mjs "${{ env.APP_VERSION }}"
+
       - name: Build macOS package
         run: ./packaging/build-macos-dmg.sh
         env:
@@ -75,6 +78,10 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+
+      - name: Set application version
+        shell: pwsh
+        run: node packaging/set-frontend-version.mjs "${{ env.APP_VERSION }}"
 
       - name: Verify packaging tools
         shell: pwsh

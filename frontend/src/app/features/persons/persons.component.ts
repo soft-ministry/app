@@ -587,9 +587,6 @@ import { Family, FamilyMember, FamilyRole } from '../families/family.model';
                   <td mat-cell *matCellDef="let person">
                     <span class="person-type-cell">
                       <span>{{ personTypeStatusLabel(person) }}</span>
-                      @if (personStatus(person) === 'INACTIVE') {
-                        <span class="person-type-info" [title]="inactiveMemberTooltip()" [attr.aria-label]="inactiveMemberTooltip()">[i]</span>
-                      }
                     </span>
                   </td>
                 </ng-container>
@@ -1117,12 +1114,6 @@ export class PersonsComponent implements OnInit, OnDestroy {
     return this.personStatus(person) === 'INACTIVE'
       ? `${label} (${this.language.language() === 'en' ? 'inactive' : 'inactiv'})`
       : label;
-  }
-
-  inactiveMemberTooltip(): string {
-    return this.language.language() === 'en'
-      ? 'A member who can no longer participate in church programs due to age.'
-      : 'Membru care nu mai poate participa la programele bisericii datorită vârstei.';
   }
 
   personStatus(person: Person): Person['status'] {
