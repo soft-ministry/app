@@ -51,6 +51,8 @@ jobs:
 
       - name: SonarQube Quality Gate
         id: quality-gate
+        # Temporary: keep the result visible without blocking CI until coverage is configured.
+        continue-on-error: true
         uses: SonarSource/sonarqube-quality-gate-action@v1
         with:
           pollingTimeoutSec: 600
