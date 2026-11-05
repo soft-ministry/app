@@ -1128,7 +1128,7 @@ function formatEventDateTime(event: EventItem): string {
 }
 
 function eventTableName(event: EventItem): string {
-  return event.eventName.replace(/\s*[·•-]\s*\d{1,2}\.\d{1,2}\.\d{4}\s*$/, '').trim();
+  return event.eventName.replace(/[·•-]\s*\d{1,2}\.\d{1,2}\.\d{4}\s*$/, '').trim();
 }
 
 function formatEventTime(time?: string | null): string {

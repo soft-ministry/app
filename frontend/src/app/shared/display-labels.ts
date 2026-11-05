@@ -67,7 +67,7 @@ export function memberTypeLabel(type: Person['memberType']): string {
     ADHERENT: isEnglish() ? 'adherent' : 'apartenent',
     OCCASIONAL_VISITOR: isEnglish() ? 'occasional visitor' : 'vizitator ocazional',
     VISITOR: isEnglish() ? 'visitor' : 'vizitator',
-    PASTOR: isEnglish() ? 'pastor' : 'pastor',
+    PASTOR: 'pastor',
     LEADER: isEnglish() ? 'leader' : 'lider'
   };
   return labels[type] || type.toLowerCase();
@@ -78,7 +78,7 @@ export function socialNeedTypeLabel(type: SocialNeedType): string {
     FINANCIAL: isEnglish() ? 'financial support' : 'sprijin financiar',
     SOCIAL: isEnglish() ? 'social support' : 'sprijin social',
     FOOD: isEnglish() ? 'food' : 'alimente',
-    MEDICAL: isEnglish() ? 'medical' : 'medical',
+    MEDICAL: 'medical',
     HOUSING: isEnglish() ? 'housing' : 'locuire',
     COUNSELING: isEnglish() ? 'counseling' : 'consiliere',
     OTHER: isEnglish() ? 'other need' : 'altă nevoie'

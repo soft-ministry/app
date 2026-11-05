@@ -106,11 +106,26 @@ function escapeIcs(value: string): string {
 }
 
 function safeFilename(value: string): string {
-  return value
+  const normalized = value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80) || 'eveniment';
+    .toLowerCase();
+  let filename = '';
+  let separatorPending = false;
+
+  for (const character of normalized) {
+    const isAsciiLetterOrDigit = (character >= 'a' && character <= 'z')
+      || (character >= '0' && character <= '9');
+    if (isAsciiLetterOrDigit) {
+      if (separatorPending && filename) {
+        filename += '-';
+      }
+      filename += character;
+      separatorPending = false;
+    } else {
+      separatorPending = true;
+    }
+  }
+
+  return filename.slice(0, 80) || 'eveniment';
 }
