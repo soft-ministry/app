@@ -46,6 +46,18 @@ powershell -ExecutionPolicy Bypass -File .\packaging\build-windows-portable.ps1
 
 Pentru installer Windows sunt necesare JDK 21+, Maven, Node.js/npm si WiX Toolset 3.x.
 
+## GitHub Actions
+
+Workflow-ul `.github/workflows/desktop-packages.yml` rulează automat la fiecare push pe
+`main` și poate fi pornit și manual din GitHub Actions. Generează:
+
+- `ModernControl-...dmg` pentru macOS Apple Silicon (`arm64`), sau ZIP dacă DMG nu este disponibil;
+- `ModernMinistry-...exe` pentru Windows.
+
+Fișierele se descarcă din secțiunea **Artifacts** a rulării workflow-ului. Pachetele
+generate nu sunt semnate/notarizate încă, deci macOS și Windows pot afișa avertismente
+de securitate la prima pornire.
+
 ## Development
 
 Development ramane separat:
