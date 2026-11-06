@@ -54,9 +54,19 @@ Workflow-ul `.github/workflows/desktop-packages.yml` rulează automat la fiecare
 - `ModernControl-...dmg` pentru macOS Apple Silicon (`arm64`), sau ZIP dacă DMG nu este disponibil;
 - `ModernMinistry-...exe` pentru Windows.
 
-Fișierele se descarcă din secțiunea **Artifacts** a rulării workflow-ului. Pachetele
-generate nu sunt semnate/notarizate încă, deci macOS și Windows pot afișa avertismente
-de securitate la prima pornire.
+Pentru build-urile pornite prin push pe `main`, fișierele se descarcă din secțiunea
+**Artifacts** a rulării workflow-ului.
+
+Pentru un release permanent, creează și publică un tag de forma `v1.0.1`:
+
+```bash
+git tag -a v1.0.1 -m "Release v1.0.1"
+git push origin v1.0.1
+```
+
+Workflow-ul va genera automat DMG-ul și EXE-ul, apoi le va atașa unui GitHub Release
+cu tag-ul respectiv. Pachetele generate nu sunt semnate/notarizate încă, deci macOS
+și Windows pot afișa avertismente de securitate la prima pornire.
 
 ## Development
 
