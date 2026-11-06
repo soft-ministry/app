@@ -105,6 +105,15 @@ export interface PersonFormDialogResult extends PersonRequest {
         </mat-form-field>
 
         <mat-form-field appearance="outline">
+          <mat-label>{{ text('Gen (opțional)', 'Gender (optional)') }}</mat-label>
+          <mat-select formControlName="gender">
+            <mat-option value="">{{ text('Nespecificat', 'Not specified') }}</mat-option>
+            <mat-option value="MALE">{{ text('Bărbat', 'Male') }}</mat-option>
+            <mat-option value="FEMALE">{{ text('Femeie', 'Female') }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
           <mat-label>{{ text('Tip', 'Type') }}</mat-label>
           <mat-select formControlName="memberType">
             <mat-option value="MEMBER">{{ text('Membru', 'Member') }}</mat-option>
@@ -191,6 +200,7 @@ export class PersonFormDialogComponent {
     email: [this.data.person?.email || ''],
     phone: [this.data.person?.phone || ''],
     birthDate: [this.data.person?.birthDate || ''],
+    gender: [this.data.person?.gender || ''],
     memberType: [this.data.person?.memberType || 'MEMBER' as Person['memberType'], Validators.required],
     status: [this.data.person?.status || (this.data.person?.active === false ? 'INACTIVE' : 'ACTIVE')],
     statusChangedDate: [this.data.person?.statusChangedDate || ''],
@@ -234,6 +244,7 @@ export class PersonFormDialogComponent {
       publicDescription: raw.publicDescription || null,
       privateDescription: raw.privateDescription || null,
       birthDate: raw.birthDate || null,
+      gender: (raw.gender || null) as Person['gender'],
       active: status === 'ACTIVE',
       status,
       statusChangedDate: status === 'DECEASED' || status === 'TRANSFERRED' || status === 'WITHDRAWN' ? raw.statusChangedDate || null : null,

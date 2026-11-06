@@ -2,7 +2,6 @@ import { Routes } from '@angular/router';
 
 import { LoginComponent } from './core/login.component';
 import { adminGuard, authGuard } from './core/auth.guard';
-import { inProgressGuard } from './core/feature.guard';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { PersonsComponent } from './features/persons/persons.component';
 import { GroupsComponent } from './features/groups/groups.component';
@@ -26,8 +25,8 @@ export const routes: Routes = [
   { path: 'finance', component: FinanceComponent, canActivate: [authGuard], title: 'Biserică · Finanțe' },
   { path: 'reports', component: ReportsComponent, canActivate: [authGuard], title: 'Biserică · Grafice' },
   { path: 'social-support', component: SocialSupportComponent, canActivate: [authGuard], title: 'Biserică · Sprijin social' },
-  { path: 'families', component: FamiliesComponent, canActivate: [authGuard, inProgressGuard], title: 'Biserică · Familii' },
-  { path: 'families/report', component: FamilyReportComponent, canActivate: [authGuard, inProgressGuard], title: 'Biserică · Raport familii' },
+  { path: 'families', component: FamiliesComponent, canActivate: [authGuard], title: 'Biserică · Familii' },
+  { path: 'families/report', component: FamilyReportComponent, canActivate: [authGuard], title: 'Biserică · Raport familii' },
   {
     path: 'settings',
     loadComponent: () => import('./features/settings/settings.component').then((module) => module.SettingsComponent),

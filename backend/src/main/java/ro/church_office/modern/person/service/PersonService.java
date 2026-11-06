@@ -151,6 +151,7 @@ public class PersonService {
         person.setPosition(blankToNull(request.position()));
         applyDescriptions(request, person, username);
         person.setBirthDate(request.birthDate());
+        person.setGender(request.gender());
         MemberType memberType = request.memberType() == null ? MemberType.MEMBER : request.memberType();
         person.setMemberType(memberType);
         PersonStatus status = request.status() == null

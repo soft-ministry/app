@@ -1,5 +1,5 @@
-export type FamilyRole = 'HUSBAND' | 'WIFE' | 'CHILD' | 'PARENT' | 'WIDOWED' | 'OTHER';
-export type FamilyRelationshipType = 'SPOUSE' | 'PARENT_CHILD';
+export type FamilyRole = 'HUSBAND' | 'WIFE' | 'FATHER' | 'MOTHER' | 'GRANDFATHER' | 'GRANDMOTHER' | 'CHILD' | 'PARENT' | 'WIDOWED' | 'OTHER';
+export type FamilyRelationshipType = 'SPOUSE' | 'PARENT_CHILD' | 'SIBLING';
 
 export interface FamilyMember {
   id: number;

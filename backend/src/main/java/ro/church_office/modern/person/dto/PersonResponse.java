@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 import ro.church_office.modern.person.dao.MemberType;
+import ro.church_office.modern.person.dao.Gender;
 import ro.church_office.modern.person.dao.Person;
 import ro.church_office.modern.person.dao.PersonStatus;
 
@@ -24,6 +25,7 @@ public record PersonResponse(
         boolean descriptionPrivate,
         boolean descriptionVisible,
         LocalDate birthDate,
+        Gender gender,
         MemberType memberType,
         boolean active,
         PersonStatus status,
@@ -54,6 +56,7 @@ public record PersonResponse(
                 hasText(privateDescription),
                 true,
                 person.getBirthDate(),
+                person.getGender(),
                 person.getMemberType(),
                 person.isActive(),
                 person.getStatus(),

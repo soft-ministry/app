@@ -6,11 +6,12 @@ import { LanguageService } from '../../core/language.service';
 import { memberTypeLabel } from '../../shared/display-labels';
 import { Family } from '../families/family.model';
 import { Group } from '../groups/group.model';
-import { Person } from './person.model';
+import { Gender, Person } from './person.model';
 import { PersonsService } from './persons.service';
 
 export interface PersonDetailDialogData {
   person: Person;
+  people: Person[];
   groups: Group[];
   families: Family[];
 }
@@ -148,6 +149,72 @@ export interface PersonDetailDialogData {
       white-space: pre-wrap;
     }
 
+    .family-tree {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--app-border);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .family-tree-level {
+      display: grid;
+      gap: 6px;
+    }
+
+    .family-tree-level-title {
+      color: var(--app-muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .family-tree-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 7px;
+    }
+
+    .family-tree-card {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+      padding: 8px 9px;
+      border: 1px solid var(--app-border);
+      border-radius: 7px;
+      background: #ffffff;
+    }
+
+    .family-tree-card.current {
+      border-color: var(--app-primary);
+      background: var(--app-primary-soft);
+    }
+
+    .family-tree-card-name {
+      overflow: hidden;
+      color: var(--app-text);
+      font-size: 13px;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .family-tree-card-meta {
+      overflow: hidden;
+      color: var(--app-muted);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .family-tree-connector {
+      width: 1px;
+      height: 10px;
+      margin: 0 auto;
+      background: var(--app-border);
+    }
+
     .status-photo {
       overflow: hidden;
       border: 1px solid var(--app-border);
@@ -218,10 +285,118 @@ export interface PersonDetailDialogData {
             <span class="detail-label">{{ text('Naștere', 'Birth date') }}</span>
             <span class="detail-value">{{ formatDate(person.birthDate) || '-' }}</span>
           </div>
+            <div class="detail-item">
+              <span class="detail-label">{{ text('Gen', 'Gender') }}</span>
+              <span class="detail-value">{{ genderLabel(person.gender) }}</span>
+            </div>
           <div class="detail-item">
             <span class="detail-label">Rol</span>
             <span class="detail-value">{{ roleLabel() }}</span>
           </div>
+
+        </div>
+
+        @if (hasFamilyTree()) {
+            <section class="detail-section">
+              <span class="section-title">
+                <mat-icon>account_tree</mat-icon>
+                {{ text('Familie', 'Family') }}
+              </span>
+              <div class="family-tree">
+                @if (grandparents().length > 0) {
+                  <div class="family-tree-level">
+                    <span class="family-tree-level-title">{{ text('Bunici', 'Grandparents') }}</span>
+                    <div class="family-tree-cards">
+                      @for (relative of grandparents(); track relative.id) {
+                        <div class="family-tree-card">
+                          <span class="family-tree-card-name">{{ displayName(relative) }}</span>
+                          <span class="family-tree-card-meta">{{ relativeMeta(relative) }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                  <div class="family-tree-connector" aria-hidden="true"></div>
+                }
+
+                @if (parents().length > 0) {
+                  <div class="family-tree-level">
+                    <span class="family-tree-level-title">{{ text('Părinți', 'Parents') }}</span>
+                    <div class="family-tree-cards">
+                      @for (relative of parents(); track relative.id) {
+                        <div class="family-tree-card">
+                          <span class="family-tree-card-name">{{ displayName(relative) }}</span>
+                          <span class="family-tree-card-meta">{{ relativeMeta(relative) }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                  <div class="family-tree-connector" aria-hidden="true"></div>
+                }
+
+                <div class="family-tree-level">
+                  <span class="family-tree-level-title">{{ text('Persoana selectată', 'Selected person') }}</span>
+                  <div class="family-tree-cards">
+                    <div class="family-tree-card current">
+                      <span class="family-tree-card-name">{{ displayName(person) }}</span>
+                      <span class="family-tree-card-meta">{{ relativeMeta(person) }}</span>
+                    </div>
+                    @if (spouse(); as partner) {
+                      <div class="family-tree-card">
+                        <span class="family-tree-card-name">{{ displayName(partner) }}</span>
+                        <span class="family-tree-card-meta">{{ text('soț/soție', 'spouse') }} · {{ relativeMeta(partner) }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                @if (siblings().length > 0) {
+                  <div class="family-tree-connector" aria-hidden="true"></div>
+                  <div class="family-tree-level">
+                    <span class="family-tree-level-title">{{ text('Frați', 'Siblings') }}</span>
+                    <div class="family-tree-cards">
+                      @for (relative of siblings(); track relative.id) {
+                        <div class="family-tree-card">
+                          <span class="family-tree-card-name">{{ displayName(relative) }}</span>
+                          <span class="family-tree-card-meta">{{ relativeMeta(relative) }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @if (children().length > 0) {
+                  <div class="family-tree-connector" aria-hidden="true"></div>
+                  <div class="family-tree-level">
+                    <span class="family-tree-level-title">{{ text('Copii', 'Children') }}</span>
+                    <div class="family-tree-cards">
+                      @for (relative of children(); track relative.id) {
+                        <div class="family-tree-card">
+                          <span class="family-tree-card-name">{{ displayName(relative) }}</span>
+                          <span class="family-tree-card-meta">{{ relativeMeta(relative) }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+                @if (grandchildren().length > 0) {
+                  <div class="family-tree-connector" aria-hidden="true"></div>
+                  <div class="family-tree-level">
+                    <span class="family-tree-level-title">{{ text('Nepoți', 'Grandchildren') }}</span>
+                    <div class="family-tree-cards">
+                      @for (relative of grandchildren(); track relative.id) {
+                        <div class="family-tree-card">
+                          <span class="family-tree-card-name">{{ displayName(relative) }}</span>
+                          <span class="family-tree-card-meta">{{ relativeMeta(relative) }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </section>
+          }
+        <div class="detail-grid">
           <div class="detail-item">
             <span class="detail-label">{{ text('Adresă', 'Address') }}</span>
             <span class="detail-value">{{ valueOrDash(person.address) }}</span>
@@ -288,6 +463,7 @@ export class PersonDetailDialogComponent implements OnInit, OnDestroy {
   private personsService = inject(PersonsService);
   language = inject(LanguageService);
   person = this.data.person;
+  people = this.data.people;
   groups = this.data.groups;
   families = this.data.families;
   memberTypeLabel = memberTypeLabel;
@@ -366,5 +542,92 @@ export class PersonDetailDialogComponent implements OnInit, OnDestroy {
     }
     const [year, month, day] = value.split('-');
     return year && month && day ? `${day}.${month}.${year}` : value;
+  }
+
+  genderLabel(gender?: Gender | null): string {
+    if (gender === 'MALE') {
+      return this.text('Bărbat', 'Male');
+    }
+    if (gender === 'FEMALE') {
+      return this.text('Femeie', 'Female');
+    }
+    return this.text('Nespecificat', 'Not specified');
+  }
+
+  relativeMeta(person: Person): string {
+    const details = [this.genderLabel(person.gender), this.formatDate(person.birthDate)].filter(Boolean);
+    return details.join(' · ') || this.text('Fără detalii suplimentare', 'No additional details');
+  }
+
+  hasFamilyTree(): boolean {
+    return this.parents().length > 0
+      || this.grandparents().length > 0
+      || this.siblings().length > 0
+      || this.children().length > 0
+      || this.grandchildren().length > 0
+      || !!this.spouse();
+  }
+
+  parents(): Person[] {
+    return this.peopleForIds(this.relationships()
+      .filter((relationship) => relationship.type === 'PARENT_CHILD' && relationship.personBId === this.person.id)
+      .map((relationship) => relationship.personAId));
+  }
+
+  grandparents(): Person[] {
+    const parentIds = new Set(this.parents().map((parent) => parent.id));
+    return this.peopleForIds(this.relationships()
+      .filter((relationship) => relationship.type === 'PARENT_CHILD' && parentIds.has(relationship.personBId))
+      .map((relationship) => relationship.personAId));
+  }
+
+  spouse(): Person | null {
+    const relationship = this.relationships().find((item) => item.type === 'SPOUSE'
+      && (item.personAId === this.person.id || item.personBId === this.person.id));
+    if (!relationship) {
+      return null;
+    }
+    const id = relationship.personAId === this.person.id ? relationship.personBId : relationship.personAId;
+    return this.personById(id);
+  }
+
+  siblings(): Person[] {
+    const parentIds = new Set(this.parents().map((parent) => parent.id));
+    const inferred = this.relationships()
+      .filter((relationship) => relationship.type === 'PARENT_CHILD'
+        && parentIds.has(relationship.personAId)
+        && relationship.personBId !== this.person.id)
+      .map((relationship) => relationship.personBId);
+    const explicit = this.relationships()
+      .filter((relationship) => relationship.type === 'SIBLING'
+        && (relationship.personAId === this.person.id || relationship.personBId === this.person.id))
+      .map((relationship) => relationship.personAId === this.person.id ? relationship.personBId : relationship.personAId);
+    return this.peopleForIds([...inferred, ...explicit]);
+  }
+
+  children(): Person[] {
+    return this.peopleForIds(this.relationships()
+      .filter((relationship) => relationship.type === 'PARENT_CHILD' && relationship.personAId === this.person.id)
+      .map((relationship) => relationship.personBId));
+  }
+
+  grandchildren(): Person[] {
+    const childIds = new Set(this.children().map((child) => child.id));
+    return this.peopleForIds(this.relationships()
+      .filter((relationship) => relationship.type === 'PARENT_CHILD' && childIds.has(relationship.personAId))
+      .map((relationship) => relationship.personBId));
+  }
+
+  private relationships(): Family['relationships'] {
+    return this.families.flatMap((family) => family.relationships);
+  }
+
+  private peopleForIds(ids: number[]): Person[] {
+    const uniqueIds = [...new Set(ids)];
+    return uniqueIds.map((id) => this.personById(id)).filter((person): person is Person => !!person);
+  }
+
+  private personById(id: number): Person | null {
+    return this.people.find((person) => person.id === id) || null;
   }
 }

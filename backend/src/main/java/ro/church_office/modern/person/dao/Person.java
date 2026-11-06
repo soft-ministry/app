@@ -56,6 +56,9 @@ public class Person {
     private LocalDate birthDate;
 
     @Enumerated(EnumType.STRING)
+    private Gender gender;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MemberType memberType = MemberType.MEMBER;
 
@@ -203,6 +206,14 @@ public class Person {
 
     public void setBirthDate(LocalDate birthDate) {
         this.birthDate = birthDate;
+    }
+
+    public Gender getGender() {
+        return gender;
+    }
+
+    public void setGender(Gender gender) {
+        this.gender = gender;
     }
 
     public MemberType getMemberType() {

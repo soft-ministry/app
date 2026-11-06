@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
 import ro.church_office.modern.person.dao.MemberType;
+import ro.church_office.modern.person.dao.Gender;
 import ro.church_office.modern.person.dao.PersonStatus;
 
 public record PersonRequest(
@@ -21,6 +22,7 @@ public record PersonRequest(
         String publicDescription,
         String privateDescription,
         LocalDate birthDate,
+        Gender gender,
         MemberType memberType,
         Boolean active,
         PersonStatus status,

@@ -15,6 +15,7 @@ export interface Person {
   descriptionVisible?: boolean;
   memberType: 'MEMBER' | 'CHILD' | 'ADHERENT' | 'OCCASIONAL_VISITOR' | 'VISITOR' | 'PASTOR' | 'LEADER';
   birthDate?: string | null;
+  gender?: Gender | null;
   active: boolean;
   status: PersonStatus;
   statusChangedDate?: string | null;
@@ -24,6 +25,7 @@ export interface Person {
 }
 
 export type PersonStatus = 'ACTIVE' | 'INACTIVE' | 'DECEASED' | 'TRANSFERRED' | 'WITHDRAWN';
+export type Gender = 'MALE' | 'FEMALE';
 
 export interface PersonRequest {
   firstName: string;
@@ -39,6 +41,7 @@ export interface PersonRequest {
   descriptionPrivate?: boolean;
   birthDate?: string | null;
   memberType: Person['memberType'];
+  gender?: Gender | null;
   active: boolean;
   status: PersonStatus;
   statusChangedDate?: string | null;

@@ -137,17 +137,19 @@ public class FamilyService {
         FamilyRelationship relationship = new FamilyRelationship();
         relationship.setFamilyId(familyId);
         relationship.setType(request.type());
-        if (request.type() == FamilyRelationshipType.SPOUSE) {
+        if (request.type() == FamilyRelationshipType.SPOUSE || request.type() == FamilyRelationshipType.SIBLING) {
             long left = Math.min(request.personAId(), request.personBId());
             long right = Math.max(request.personAId(), request.personBId());
             relationship.setPersonAId(left);
             relationship.setPersonBId(right);
-        } else {
+        } else if (request.type() == FamilyRelationshipType.PARENT_CHILD) {
             relationship.setPersonAId(request.personAId());
             relationship.setPersonBId(request.personBId());
             if (createsParentCycle(familyId, request.personAId(), request.personBId())) {
                 throw new IllegalArgumentException("Relația părinte-copil ar crea un ciclu.");
             }
+        } else {
+            throw new IllegalArgumentException("Tip de relație necunoscut.");
         }
         ensureRelationshipIsNew(relationship);
         relationshipRepository.save(relationship);

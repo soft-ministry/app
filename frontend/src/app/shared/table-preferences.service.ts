@@ -37,8 +37,8 @@ export class TablePreferencesService {
     { id: 'reports', label: 'Rapoarte', icon: 'assessment', route: '/reports', group: 'management' },
     { id: 'finance', label: 'Finanțe', icon: 'account_balance_wallet', route: '/finance', group: 'management' },
     { id: 'social-support', label: 'Sprijin social', icon: 'volunteer_activism', route: '/social-support', group: 'pastoral' },
-    { id: 'families', label: 'Familii', icon: 'family_restroom', route: '/families', group: 'pastoral', disabled: true },
-    { id: 'family-report', label: 'Raport familii', icon: 'account_tree', route: '/families/report', group: 'pastoral', disabled: true }
+    { id: 'families', label: 'Familii', icon: 'family_restroom', route: '/families', group: 'pastoral' },
+    { id: 'family-report', label: 'Raport familii', icon: 'account_tree', route: '/families/report', group: 'pastoral' }
   ];
   readonly pageSize = signal(this.loadPageSize());
   readonly visibleTables = signal<string[]>(this.loadStoredTableIds(this.visibleTablesStorageKey, this.availableTables.map((item) => item.id)));

@@ -1,4 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { CdkDrag, CdkDragDrop, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { FormsModule } from '@angular/forms';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,12 +14,12 @@ import { ToastService } from '../../shared/toast.service';
 import { Person } from '../persons/person.model';
 import { PersonsService } from '../persons/persons.service';
 import { FamiliesService } from './families.service';
-import { Family, FamilyMember, FamilyRelationship, FamilyRelationshipType, FamilyRole } from './family.model';
+import { Family, FamilyMember, FamilyRelationship, FamilyRelationshipRequest, FamilyRelationshipType, FamilyRole } from './family.model';
 
 @Component({
   selector: 'app-families',
   standalone: true,
-  imports: [FormsModule, MatDialogModule, MatIconModule, PageNavComponent, RouterLink],
+  imports: [CdkDrag, CdkDropList, CdkDropListGroup, FormsModule, MatDialogModule, MatIconModule, PageNavComponent, RouterLink],
   styles: [`
     .families-toolbar {
       display: flex;
@@ -33,6 +34,24 @@ import { Family, FamilyMember, FamilyRelationship, FamilyRelationshipType, Famil
     .families-toolbar .toolbar-input {
       flex: 1 1 260px;
       width: min(380px, 100%);
+    }
+
+    .family-selector {
+      flex: 1 1 240px;
+      width: min(300px, 100%);
+    }
+
+    .family-create-inline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1 1 280px;
+      min-width: 0;
+    }
+
+    .family-create-inline .family-input {
+      min-width: 0;
+      flex: 1 1 auto;
     }
 
     .families-toolbar button {
@@ -89,19 +108,11 @@ import { Family, FamilyMember, FamilyRelationship, FamilyRelationshipType, Famil
 
     .families-workspace {
       display: grid;
-      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-      gap: 18px;
-      align-items: start;
+      grid-template-columns: minmax(0, 1fr);
     }
 
-    .family-list-panel,
     .family-detail-panel {
       min-width: 0;
-    }
-
-    .family-list-panel {
-      position: sticky;
-      top: 16px;
     }
 
     .family-create-form,
@@ -109,20 +120,6 @@ import { Family, FamilyMember, FamilyRelationship, FamilyRelationshipType, Famil
     .relationship-builder {
       display: grid;
       gap: 10px;
-    }
-
-    .family-create-form {
-      grid-template-columns: minmax(0, 1fr) auto;
-      margin-bottom: 14px;
-    }
-
-    .families-list {
-      display: grid;
-      gap: 8px;
-      max-height: calc(100vh - 330px);
-      min-height: 168px;
-      overflow: auto;
-      padding-right: 2px;
     }
 
     .family-card {
@@ -376,6 +373,180 @@ import { Family, FamilyMember, FamilyRelationship, FamilyRelationshipType, Famil
       padding: 12px;
     }
 
+    .family-tree-editor {
+      display: grid;
+      gap: 12px;
+      padding: 14px 20px 18px;
+      border-top: 1px solid #edf2f7;
+      background: #f8fafc;
+    }
+
+    .family-tree-workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .family-tree-canvas {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--app-border);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .tree-level {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .tree-grandparents-level {
+      align-items: start;
+      gap: 18px;
+    }
+
+    .tree-grandparent-group {
+      display: grid;
+      gap: 5px;
+    }
+
+    .tree-family-side-label {
+      color: var(--app-muted);
+      font-size: 10px;
+      font-weight: 750;
+      text-align: center;
+    }
+
+    .tree-level-label {
+      color: var(--app-muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .tree-connector {
+      width: 1px;
+      height: 10px;
+      margin: 0 auto;
+      background: var(--app-border);
+    }
+
+    .tree-slot {
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 4px;
+      width: 145px;
+      min-height: 62px;
+      box-sizing: border-box;
+      border: 1px dashed #94a3b8;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: var(--app-muted);
+      text-align: center;
+      transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+    }
+
+    .tree-slot.cdk-drop-list-receiving,
+    .tree-slot.cdk-drop-list-dragging {
+      border-color: var(--app-primary);
+      background: var(--app-primary-soft);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .1);
+    }
+
+    .tree-person-card {
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 3px;
+      width: 100%;
+      min-height: 60px;
+      box-sizing: border-box;
+      padding: 7px;
+      border-radius: 7px;
+      background: #ffffff;
+      color: var(--app-text);
+      cursor: grab;
+    }
+
+    .tree-person-card.current {
+      background: var(--app-primary-soft);
+      color: var(--app-primary-strong);
+    }
+
+    .tree-person-card:active {
+      cursor: grabbing;
+    }
+
+    .tree-person-name {
+      overflow: hidden;
+      max-width: 100%;
+      font-size: 12px;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tree-person-meta {
+      color: var(--app-muted);
+      font-size: 10px;
+    }
+
+    .tree-person-picker {
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--app-border);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .tree-person-list {
+      display: grid;
+      gap: 5px;
+      max-height: 300px;
+      overflow: auto;
+      padding: 2px;
+    }
+
+    .tree-person-option {
+      display: grid;
+      gap: 2px;
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #edf2f7;
+      border-radius: 7px;
+      background: #ffffff;
+      color: var(--app-text);
+      cursor: grab;
+      padding: 7px;
+      text-align: left;
+    }
+
+    .tree-person-option:hover {
+      border-color: var(--app-primary);
+      background: var(--app-primary-soft);
+    }
+
+    .tree-expand-button {
+      justify-self: center;
+      border: 0;
+      background: transparent;
+      color: var(--app-primary-strong);
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
     .relationship-copy {
       min-width: 0;
     }
@@ -413,18 +584,10 @@ import { Family, FamilyMember, FamilyRelationship, FamilyRelationshipType, Famil
         grid-template-columns: 1fr;
       }
 
-      .family-list-panel {
-        position: static;
-      }
-
-      .families-list {
-        max-height: none;
-      }
     }
 
     @media (max-width: 760px) {
       .families-toolbar,
-      .family-create-form,
       .family-tool-grid,
       .relationship-builder,
       .member-grid {
@@ -437,11 +600,17 @@ import { Family, FamilyMember, FamilyRelationship, FamilyRelationshipType, Famil
       }
 
       .families-toolbar .toolbar-input,
+      .families-toolbar .family-selector,
+      .family-create-inline,
       .families-toolbar button {
         width: 100%;
       }
 
       .families-summary {
+        grid-template-columns: 1fr;
+      }
+
+      .family-tree-workspace {
         grid-template-columns: 1fr;
       }
 
@@ -498,13 +667,30 @@ import { Family, FamilyMember, FamilyRelationship, FamilyRelationshipType, Famil
         <section class="surface table-surface">
           <div class="surface-header table-surface-header">
             <div class="families-toolbar">
-              <input
-                class="toolbar-control toolbar-input"
-                type="search"
-                name="familySearch"
-                placeholder="Caută familie sau membru"
-                [(ngModel)]="familyQuery"
-                aria-label="Caută familie sau membru">
+              <select
+                class="toolbar-control toolbar-select family-selector"
+                [ngModel]="selectedFamilyId()"
+                (ngModelChange)="selectFamily($event)"
+                [ngModelOptions]="{ standalone: true }"
+                aria-label="Selectează familia">
+                @for (family of families(); track family.id) {
+                  <option [ngValue]="family.id">{{ family.name }}</option>
+                }
+              </select>
+
+              <form class="family-create-inline" (ngSubmit)="createFamily()">
+                <input
+                  class="family-input"
+                  type="text"
+                  name="familyName"
+                  placeholder="Familie nouă"
+                  [(ngModel)]="newFamilyName"
+                  [ngModelOptions]="{ standalone: true }">
+                <button class="toolbar-button toolbar-primary-button" type="submit" [disabled]="!newFamilyName.trim()">
+                  <mat-icon>add</mat-icon>
+                  Creează
+                </button>
+              </form>
 
               <button class="toolbar-button toolbar-secondary-button" type="button" routerLink="/families/report">
                 <mat-icon>summarize</mat-icon>
@@ -514,230 +700,224 @@ import { Family, FamilyMember, FamilyRelationship, FamilyRelationshipType, Famil
           </div>
 
           <div class="families-workspace">
-            <aside class="surface family-list-panel">
-              <div class="family-section">
-                <div class="family-section-header">
-                  <h2>Lista familiilor</h2>
-                  <span class="muted-small">{{ filteredFamilies().length }} afișate</span>
-                </div>
-
-                <form class="family-create-form" (ngSubmit)="createFamily()">
-                  <label class="family-field">
-                    <span>Familie nouă</span>
-                    <input
-                      class="family-input"
-                      name="familyName"
-                      placeholder="ex. Popescu"
-                      [(ngModel)]="newFamilyName"
-                      required>
-                  </label>
-                  <button class="toolbar-button toolbar-primary-button" type="submit" [disabled]="!newFamilyName.trim()">
-                    <mat-icon>add</mat-icon>
-                    Creează
-                  </button>
-                </form>
-
-                <div class="families-list">
-                  @for (family of filteredFamilies(); track family.id) {
-                    <button class="family-card" type="button" [class.active]="selectedFamilyId() === family.id" (click)="selectFamily(family.id)">
-                      <span class="family-card-head">
-                        <span class="family-card-title">{{ family.name }}</span>
-                        <span class="family-card-count">
-                          <mat-icon>groups</mat-icon>
-                          {{ family.members.length }}
-                        </span>
-                      </span>
-                      <span class="family-card-members">
-                        @for (member of previewMembers(family); track member.id) {
-                          <span class="family-chip">{{ memberName(member) }}</span>
-                        }
-                        @if (family.members.length > 3) {
-                          <span class="family-chip">+{{ family.members.length - 3 }}</span>
-                        }
-                        @if (family.members.length === 0) {
-                          <span class="muted-small">Fără membri încă</span>
-                        }
-                      </span>
-                      <span class="family-card-meta">
-                        <span>{{ family.relationships.length }} relații</span>
-                        <span>{{ family.notes ? 'are note' : 'fără note' }}</span>
-                      </span>
-                    </button>
-                  } @empty {
-                    <div class="empty-inline">
-                      <mat-icon>search_off</mat-icon>
-                      <span>Nu există familii pentru filtrul curent.</span>
-                    </div>
-                  }
-                </div>
-              </div>
-            </aside>
-
             <section class="surface family-detail-panel">
               @if (selectedFamily(); as family) {
-                <div class="family-section">
+                <section class="family-tree-editor" aria-label="Arbore familial" cdkDropListGroup>
                   <div class="family-section-header">
                     <div class="section-title-group">
-                      <h2>{{ family.name }}</h2>
-                      <div class="detail-meta">
-                        <span>{{ family.members.length }} membri</span>
-                        <span>{{ family.relationships.length }} relații</span>
-                      </div>
-                    </div>
-                    <button class="toolbar-button toolbar-danger-button" type="button" (click)="deleteFamily(family)">
-                      <mat-icon>delete</mat-icon>
-                      Șterge
-                    </button>
-                  </div>
-
-                  <div class="family-tool-grid">
-                    <label class="family-field">
-                      <span>Nume familie</span>
-                      <input class="family-input" name="editFamilyName" [(ngModel)]="editFamilyName">
-                    </label>
-                    <label class="family-field">
-                      <span>Note</span>
-                      <textarea class="family-input" name="editFamilyNotes" [(ngModel)]="editFamilyNotes"></textarea>
-                    </label>
-                  </div>
-
-                  <div class="family-section-header">
-                    <span class="muted-small">Editează numele și notele, apoi salvează modificările.</span>
-                    <button class="toolbar-button toolbar-secondary-button" type="button" [disabled]="!canSaveFamily()" (click)="saveFamily(family)">
-                      <mat-icon>save</mat-icon>
-                      Salvează
-                    </button>
-                  </div>
-                </div>
-
-                <div class="family-section">
-                  <div class="family-section-header">
-                    <div class="section-title-group">
-                      <h2>Membri</h2>
-                      <span class="muted-small">Adaugă persoanele din aceeași gospodărie și setează rolul fiecăreia.</span>
+                      <h2>Arbore familial</h2>
+                      <span class="muted-small">Trage o persoană din dreapta peste poziția potrivită.</span>
                     </div>
                   </div>
 
-                  <form class="family-tool-grid" (ngSubmit)="addMember(family)">
-                    <label class="family-field">
-                      <span>Persoană</span>
-                      <select class="family-input" name="personId" [(ngModel)]="newMemberPersonId" required>
-                        <option [ngValue]="null">Alege persoana</option>
-                        @for (person of availablePersons(family); track person.id) {
-                          <option [ngValue]="person.id">{{ personName(person) }}</option>
-                        }
-                      </select>
-                    </label>
-                    <label class="family-field">
-                      <span>Rol în familie</span>
-                      <select class="family-input" name="role" [(ngModel)]="newMemberRole">
-                        @for (role of roles; track role) {
-                          <option [ngValue]="role">{{ roleLabel(role) }}</option>
-                        }
-                      </select>
-                    </label>
-                    <button class="toolbar-button toolbar-primary-button" type="submit" [disabled]="!newMemberPersonId">
-                      <mat-icon>person_add</mat-icon>
-                      Adaugă
-                    </button>
-                  </form>
-
-                  <div class="member-grid">
-                    @for (member of sortedMembers(family); track member.id) {
-                      <article class="member-card">
-                        <div class="member-card-main">
-                          <span class="member-name">{{ memberName(member) }}</span>
-                          <div class="member-actions">
-                            <label class="primary-toggle" [title]="member.primaryMember ? 'Persoană principală' : 'Marchează ca persoană principală'">
-                              <input
-                                type="checkbox"
-                                [checked]="member.primaryMember"
-                                (change)="togglePrimaryMember(family, member, $any($event.target).checked)">
-                              Principal
-                            </label>
-                            <button class="table-icon-button danger-table-action" type="button" aria-label="Șterge membru" (click)="removeMember(family, member)">
-                              <mat-icon>delete</mat-icon>
-                            </button>
+                  <div class="family-tree-workspace">
+                    <div class="family-tree-canvas">
+                      <span class="tree-level-label">Bunici</span>
+                      <div class="tree-level tree-grandparents-level">
+                        <div class="tree-grandparent-group">
+                          <span class="tree-family-side-label">Bunici paterni</span>
+                          <div class="tree-level">
+                            <div class="tree-slot" cdkDropList (cdkDropListDropped)="dropTreePerson($event, 'paternalGrandfather', family)">
+                              @if (treeGrandparent(family, 'paternal', 'MALE'); as grandparent) {
+                                <div class="tree-person-card" cdkDrag [cdkDragData]="grandparent">
+                                  <span class="tree-person-name">{{ personName(grandparent) }}</span>
+                                  <span class="tree-person-meta">bunic</span>
+                                </div>
+                              } @else {
+                                <mat-icon>add</mat-icon>
+                                <span>Bunic</span>
+                              }
+                            </div>
+                            <div class="tree-slot" cdkDropList (cdkDropListDropped)="dropTreePerson($event, 'paternalGrandmother', family)">
+                              @if (treeGrandparent(family, 'paternal', 'FEMALE'); as grandparent) {
+                                <div class="tree-person-card" cdkDrag [cdkDragData]="grandparent">
+                                  <span class="tree-person-name">{{ personName(grandparent) }}</span>
+                                  <span class="tree-person-meta">bunică</span>
+                                </div>
+                              } @else {
+                                <mat-icon>add</mat-icon>
+                                <span>Bunică</span>
+                              }
+                            </div>
                           </div>
                         </div>
+                        <div class="tree-grandparent-group">
+                          <span class="tree-family-side-label">Bunici materni</span>
+                          <div class="tree-level">
+                            <div class="tree-slot" cdkDropList (cdkDropListDropped)="dropTreePerson($event, 'maternalGrandfather', family)">
+                              @if (treeGrandparent(family, 'maternal', 'MALE'); as grandparent) {
+                                <div class="tree-person-card" cdkDrag [cdkDragData]="grandparent">
+                                  <span class="tree-person-name">{{ personName(grandparent) }}</span>
+                                  <span class="tree-person-meta">bunic</span>
+                                </div>
+                              } @else {
+                                <mat-icon>add</mat-icon>
+                                <span>Bunic</span>
+                              }
+                            </div>
+                            <div class="tree-slot" cdkDropList (cdkDropListDropped)="dropTreePerson($event, 'maternalGrandmother', family)">
+                              @if (treeGrandparent(family, 'maternal', 'FEMALE'); as grandparent) {
+                                <div class="tree-person-card" cdkDrag [cdkDragData]="grandparent">
+                                  <span class="tree-person-name">{{ personName(grandparent) }}</span>
+                                  <span class="tree-person-meta">bunică</span>
+                                </div>
+                              } @else {
+                                <mat-icon>add</mat-icon>
+                                <span>Bunică</span>
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="tree-connector" aria-hidden="true"></div>
+                      <span class="tree-level-label">Părinți</span>
+                      <div class="tree-level">
+                        <div class="tree-slot" cdkDropList (cdkDropListDropped)="dropTreePerson($event, 'father', family)">
+                          @if (treeParent(family, 'MALE'); as parent) {
+                            <div class="tree-person-card" cdkDrag [cdkDragData]="parent">
+                              <span class="tree-person-name">{{ personName(parent) }}</span>
+                              <span class="tree-person-meta">tată</span>
+                            </div>
+                          } @else {
+                            <mat-icon>add</mat-icon>
+                            <span>Tată</span>
+                          }
+                        </div>
+                        <div class="tree-slot" cdkDropList (cdkDropListDropped)="dropTreePerson($event, 'mother', family)">
+                          @if (treeParent(family, 'FEMALE'); as parent) {
+                            <div class="tree-person-card" cdkDrag [cdkDragData]="parent">
+                              <span class="tree-person-name">{{ personName(parent) }}</span>
+                              <span class="tree-person-meta">mamă</span>
+                            </div>
+                          } @else {
+                            <mat-icon>add</mat-icon>
+                            <span>Mamă</span>
+                          }
+                        </div>
+                      </div>
+
+                      <div class="tree-connector" aria-hidden="true"></div>
+                      <span class="tree-level-label">Persoana principală</span>
+                      <div class="tree-level">
+                        <div class="tree-slot" cdkDropList (cdkDropListDropped)="dropTreePerson($event, 'primary', family)">
+                          @if (treePrimaryPerson(family); as primary) {
+                            <div class="tree-person-card current">
+                              <span class="tree-person-name">{{ personName(primary) }}</span>
+                              <span class="tree-person-meta">principal</span>
+                            </div>
+                          } @else {
+                            <span>Adaugă primul membru</span>
+                          }
+                        </div>
+                        <div class="tree-slot" cdkDropList (cdkDropListDropped)="dropTreePerson($event, 'spouse', family)">
+                          @if (treeSpouse(family); as spouse) {
+                            <div class="tree-person-card" cdkDrag [cdkDragData]="spouse">
+                              <span class="tree-person-name">{{ personName(spouse) }}</span>
+                              <span class="tree-person-meta">soț/soție</span>
+                            </div>
+                          } @else {
+                            <mat-icon>add</mat-icon>
+                            <span>Soț/soție</span>
+                          }
+                        </div>
+                      </div>
+
+                      <div class="tree-connector" aria-hidden="true"></div>
+                      <span class="tree-level-label">Frați</span>
+                      <div class="tree-level">
+                        @for (sibling of visibleTreeSiblings(family); track sibling.id) {
+                          <div class="tree-slot">
+                            <div class="tree-person-card" cdkDrag [cdkDragData]="sibling">
+                              <span class="tree-person-name">{{ personName(sibling) }}</span>
+                              <span class="tree-person-meta">frate/soră</span>
+                            </div>
+                          </div>
+                        }
+                        <div class="tree-slot" cdkDropList (cdkDropListDropped)="dropTreePerson($event, 'sibling', family)">
+                          <mat-icon>add</mat-icon>
+                          <span>Frate/soră</span>
+                        </div>
+                      </div>
+                      @if (treeSiblings(family).length > 3) {
+                        <button class="tree-expand-button" type="button" (click)="treeSiblingsExpanded = !treeSiblingsExpanded">
+                          {{ treeSiblingsExpanded ? 'Ascunde frații' : '+ ' + (treeSiblings(family).length - 3) + ' frați' }}
+                        </button>
+                      }
+
+                      <div class="tree-connector" aria-hidden="true"></div>
+                      <span class="tree-level-label">Copii</span>
+                      <div class="tree-level">
+                        @for (slot of [0, 1, 2]; track slot) {
+                          <div class="tree-slot" cdkDropList (cdkDropListDropped)="dropTreePerson($event, 'child', family)">
+                            @if (treeChildren(family)[slot]; as child) {
+                              <div class="tree-person-card" cdkDrag [cdkDragData]="child">
+                                <span class="tree-person-name">{{ personName(child) }}</span>
+                                <span class="tree-person-meta">copil</span>
+                              </div>
+                            } @else {
+                              <mat-icon>add</mat-icon>
+                              <span>Copil</span>
+                            }
+                          </div>
+                        }
+                      </div>
+
+                      @if (treeChildren(family).length > 0) {
                         <label class="family-field">
-                          <span>Rol</span>
-                          <select class="family-input" [ngModel]="member.role" (ngModelChange)="changeMemberRole(family, member, $event)" [ngModelOptions]="{ standalone: true }">
-                            @for (role of roles; track role) {
-                              <option [ngValue]="role">{{ roleLabel(role) }}</option>
+                          <span>Adaugă nepot pentru copilul</span>
+                          <select class="family-input" [ngModel]="treeGrandchildParentId" (ngModelChange)="treeGrandchildParentId = $event" [ngModelOptions]="{ standalone: true }">
+                            @for (child of treeChildren(family); track child.id) {
+                              <option [ngValue]="child.id">{{ personName(child) }}</option>
                             }
                           </select>
                         </label>
-                      </article>
-                    } @empty {
-                      <div class="empty-inline">
-                        <mat-icon>group_add</mat-icon>
-                        <span>Adaugă primul membru ca să poți construi familia.</span>
-                      </div>
-                    }
-                  </div>
-                </div>
+                      }
 
-                <div class="family-section">
-                  <div class="family-section-header">
-                    <div class="section-title-group">
-                      <h2>Relații</h2>
-                      <span class="muted-small">Definește legăturile importante dintre membrii familiei.</span>
-                    </div>
-                  </div>
-
-                  <form class="relationship-builder" (ngSubmit)="addRelationship(family)">
-                    <label class="family-field">
-                      <span>Persoana 1</span>
-                      <select class="family-input" name="relationshipPersonA" [(ngModel)]="newRelationshipPersonAId" [disabled]="family.members.length < 2">
-                        <option [ngValue]="null">Alege</option>
-                        @for (member of sortedMembers(family); track member.id) {
-                          <option [ngValue]="member.personId">{{ memberName(member) }}</option>
-                        }
-                      </select>
-                    </label>
-                    <label class="family-field">
-                      <span>Persoana 2</span>
-                      <select class="family-input" name="relationshipPersonB" [(ngModel)]="newRelationshipPersonBId" [disabled]="family.members.length < 2">
-                        <option [ngValue]="null">Alege</option>
-                        @for (member of sortedMembers(family); track member.id) {
-                          <option [ngValue]="member.personId">{{ memberName(member) }}</option>
-                        }
-                      </select>
-                    </label>
-                    <label class="family-field">
-                      <span>Tip</span>
-                      <select class="family-input" name="relationshipType" [(ngModel)]="newRelationshipType" [disabled]="family.members.length < 2">
-                        @for (type of relationshipTypes; track type) {
-                          <option [ngValue]="type">{{ relationshipTypeLabel(type) }}</option>
-                        }
-                      </select>
-                    </label>
-                    <button class="toolbar-button toolbar-secondary-button" type="submit" [disabled]="!canAddRelationship()">
-                      <mat-icon>add_link</mat-icon>
-                      Leagă
-                    </button>
-                  </form>
-
-                  <div class="relationship-list">
-                    @for (relationship of family.relationships; track relationship.id) {
-                      <article class="relationship-card">
-                        <div class="relationship-copy">
-                          <strong class="relationship-title">{{ relationshipLabel(relationship) }}</strong>
-                          <div class="muted-small">{{ relationshipTypeDescription(relationship.type) }}</div>
+                      @if (treeChildren(family).length > 0) {
+                        <div class="tree-connector" aria-hidden="true"></div>
+                        <span class="tree-level-label">Nepoți</span>
+                        <div class="tree-level">
+                          @for (grandchild of visibleTreeGrandchildren(family); track grandchild.id) {
+                            <div class="tree-slot">
+                              <div class="tree-person-card" cdkDrag [cdkDragData]="grandchild">
+                                <span class="tree-person-name">{{ personName(grandchild) }}</span>
+                                <span class="tree-person-meta">nepot</span>
+                              </div>
+                            </div>
+                          }
+                          <div class="tree-slot" cdkDropList (cdkDropListDropped)="dropTreePerson($event, 'grandchild', family)">
+                            <mat-icon>add</mat-icon>
+                            <span>Nepot</span>
+                          </div>
                         </div>
-                        <button class="table-icon-button danger-table-action" type="button" aria-label="Șterge relația" (click)="deleteRelationship(family, relationship)">
-                          <mat-icon>delete</mat-icon>
-                        </button>
-                      </article>
-                    } @empty {
-                      <div class="empty-inline">
-                        <mat-icon>hub</mat-icon>
-                        <span>Nu există relații definite pentru această familie.</span>
+                        @if (treeGrandchildren(family).length > 3) {
+                          <button class="tree-expand-button" type="button" (click)="treeGrandchildrenExpanded = !treeGrandchildrenExpanded">
+                            {{ treeGrandchildrenExpanded ? 'Ascunde nepoții' : '+ ' + (treeGrandchildren(family).length - 3) + ' nepoți' }}
+                          </button>
+                        }
+                      }
+
+                    </div>
+
+                    <aside class="tree-person-picker">
+                      <strong>Persoane</strong>
+                      <input class="family-input" type="search" placeholder="Caută persoană" [(ngModel)]="treePersonQuery" [ngModelOptions]="{ standalone: true }">
+                      <span class="muted-small">Trage persoana peste un slot.</span>
+                      <div class="tree-person-list" cdkDropList [cdkDropListData]="treePickerPersons(family)">
+                        @for (person of treePickerPersons(family); track person.id) {
+                          <div class="tree-person-option" cdkDrag [cdkDragData]="person">
+                            <span class="tree-person-name">{{ personName(person) }}</span>
+                            <span class="tree-person-meta">{{ genderLabel(person) }}</span>
+                          </div>
+                        } @empty {
+                          <span class="muted-small">Nicio persoană găsită.</span>
+                        }
                       </div>
-                    }
+                    </aside>
                   </div>
-                </div>
+                </section>
+
               } @else {
                 <div class="empty-state">
                   <mat-icon>family_restroom</mat-icon>
@@ -762,20 +942,6 @@ export class FamiliesComponent implements OnInit {
   persons = signal<Person[]>([]);
   selectedFamilyId = signal<number | null>(null);
   selectedFamily = computed(() => this.families().find((family) => family.id === this.selectedFamilyId()) || null);
-  filteredFamilies = computed(() => {
-    const query = this.normalize(this.familyQuery);
-    if (!query) {
-      return this.families();
-    }
-    return this.families().filter((family) => {
-      const searchable = [
-        family.name,
-        family.notes || '',
-        ...family.members.map((member) => this.memberName(member))
-      ].join(' ');
-      return this.normalize(searchable).includes(query);
-    });
-  });
   totalMembers = computed(() => this.families().reduce((total, family) => total + family.members.length, 0));
   totalRelationships = computed(() => this.families().reduce((total, family) => total + family.relationships.length, 0));
   unassignedPeopleCount = computed(() => {
@@ -783,9 +949,12 @@ export class FamiliesComponent implements OnInit {
     return this.persons().filter((person) => !assigned.has(person.id)).length;
   });
 
-  roles: FamilyRole[] = ['HUSBAND', 'WIFE', 'PARENT', 'CHILD', 'WIDOWED', 'OTHER'];
-  relationshipTypes: FamilyRelationshipType[] = ['SPOUSE', 'PARENT_CHILD'];
-  familyQuery = '';
+  roles: FamilyRole[] = ['HUSBAND', 'WIFE', 'FATHER', 'MOTHER', 'PARENT', 'CHILD', 'WIDOWED', 'OTHER'];
+  relationshipTypes: FamilyRelationshipType[] = ['SPOUSE', 'PARENT_CHILD', 'SIBLING'];
+  treePersonQuery = '';
+  treeGrandchildParentId: number | null = null;
+  treeSiblingsExpanded = false;
+  treeGrandchildrenExpanded = false;
   newFamilyName = '';
   editFamilyName = '';
   editFamilyNotes = '';
@@ -822,6 +991,9 @@ export class FamiliesComponent implements OnInit {
     this.selectedFamilyId.set(id);
     this.editFamilyName = family?.name || '';
     this.editFamilyNotes = family?.notes || '';
+    this.treeGrandchildParentId = null;
+    this.treeSiblingsExpanded = false;
+    this.treeGrandchildrenExpanded = false;
     this.resetForms();
   }
 
@@ -995,6 +1167,272 @@ export class FamiliesComponent implements OnInit {
       .sort((a, b) => this.personName(a).localeCompare(this.personName(b), 'ro'));
   }
 
+  treePickerPersons(family: Family): Person[] {
+    const query = this.normalize(this.treePersonQuery);
+    return this.persons()
+      .filter((person) => person.id !== this.treePrimaryPerson(family)?.id)
+      .filter((person) => !query || this.normalize(this.personName(person)).includes(query))
+      .sort((a, b) => this.personName(a).localeCompare(this.personName(b), 'ro'));
+  }
+
+  treePrimaryPerson(family: Family): Person | null {
+    const member = family.members.find((item) => item.primaryMember) || family.members[0];
+    return member ? this.personById(member.personId) : null;
+  }
+
+  treeParent(family: Family, gender: 'MALE' | 'FEMALE'): Person | null {
+    const primary = this.treePrimaryPerson(family);
+    if (!primary) {
+      return null;
+    }
+    const parents = this.relatedIds(family, 'PARENT_CHILD', primary.id, 'parent')
+      .map((id) => this.personById(id))
+      .filter((person): person is Person => !!person);
+    return parents.find((person) => person.gender === gender)
+      || parents.find((person) => family.members.find((member) => member.personId === person.id)?.role === (gender === 'MALE' ? 'FATHER' : 'MOTHER'))
+      || null;
+  }
+
+  treeGrandparent(family: Family, side: 'paternal' | 'maternal', gender: 'MALE' | 'FEMALE'): Person | null {
+    const parent = this.treeParent(family, side === 'paternal' ? 'MALE' : 'FEMALE');
+    if (!parent) {
+      return null;
+    }
+    const grandparents = this.peopleForIds(this.relatedIds(family, 'PARENT_CHILD', parent.id, 'parent'));
+    const role = gender === 'MALE' ? 'GRANDFATHER' : 'GRANDMOTHER';
+    return grandparents.find((person) => family.members.find((member) => member.personId === person.id)?.role === role)
+      || grandparents.find((person) => person.gender === gender)
+      || null;
+  }
+
+  treeSpouse(family: Family): Person | null {
+    const primary = this.treePrimaryPerson(family);
+    if (!primary) {
+      return null;
+    }
+    const spouseId = family.relationships.find((relationship) => relationship.type === 'SPOUSE'
+      && (relationship.personAId === primary.id || relationship.personBId === primary.id));
+    return spouseId ? this.personById(spouseId.personAId === primary.id ? spouseId.personBId : spouseId.personAId) : null;
+  }
+
+  treeSiblings(family: Family): Person[] {
+    const primary = this.treePrimaryPerson(family);
+    if (!primary) {
+      return [];
+    }
+    const parentIds = this.relatedIds(family, 'PARENT_CHILD', primary.id, 'parent');
+    const inferred = family.relationships
+      .filter((relationship) => relationship.type === 'PARENT_CHILD'
+        && parentIds.includes(relationship.personAId)
+        && relationship.personBId !== primary.id)
+      .map((relationship) => relationship.personBId);
+    const explicit = family.relationships
+      .filter((relationship) => relationship.type === 'SIBLING'
+        && (relationship.personAId === primary.id || relationship.personBId === primary.id))
+      .map((relationship) => relationship.personAId === primary.id ? relationship.personBId : relationship.personAId);
+    return this.peopleForIds([...inferred, ...explicit]);
+  }
+
+  treeChildren(family: Family): Person[] {
+    const primary = this.treePrimaryPerson(family);
+    return primary ? this.peopleForIds(this.relatedIds(family, 'PARENT_CHILD', primary.id, 'child')) : [];
+  }
+
+  treeGrandchildren(family: Family): Person[] {
+    return this.peopleForIds(this.treeChildren(family).flatMap((child) => this.relatedIds(family, 'PARENT_CHILD', child.id, 'child')));
+  }
+
+  visibleTreeSiblings(family: Family): Person[] {
+    return this.treeSiblingsExpanded ? this.treeSiblings(family) : this.treeSiblings(family).slice(0, 3);
+  }
+
+  visibleTreeGrandchildren(family: Family): Person[] {
+    return this.treeGrandchildrenExpanded ? this.treeGrandchildren(family) : this.treeGrandchildren(family).slice(0, 3);
+  }
+
+  dropTreePerson(event: CdkDragDrop<unknown>, slot: TreeSlot, family: Family): void {
+    const person = event.item.data as Person | undefined;
+    if (!person) {
+      return;
+    }
+
+    if (slot === 'primary') {
+      this.ensurePrimaryTreeMember(family, person).subscribe({
+        next: (updated) => {
+          this.replaceFamily(updated);
+          this.toast.success('Persoana principală a fost adăugată.');
+        },
+        error: (error) => this.toast.error(apiErrorMessage(error, 'Nu s-a putut adăuga persoana principală.'))
+      });
+      return;
+    }
+
+    const primary = this.treePrimaryPerson(family);
+    if (!primary || person.id === primary.id) {
+      return;
+    }
+
+    if (this.isGrandparentSlot(slot) && !this.treeGrandparentParent(family, slot)) {
+      this.toast.error('Adaugă mai întâi părintele pentru această ramură.');
+      return;
+    }
+
+    const relationship = this.treeRelationship(slot, family, primary.id, person.id);
+    if (!relationship) {
+      return;
+    }
+    const role = this.treeRole(slot, person);
+    this.ensureTreeMember(family, person, role).pipe(
+      switchMap((updated) => this.addTreeRelationship(updated, relationship))
+    ).subscribe({
+      next: (updated) => {
+        this.replaceFamily(updated);
+        this.toast.success('Relația de familie a fost salvată.');
+      },
+      error: (error) => this.toast.error(apiErrorMessage(error, 'Nu s-a putut salva relația de familie.'))
+    });
+  }
+
+  genderLabel(person: Person): string {
+    return person.gender === 'MALE' ? 'bărbat' : person.gender === 'FEMALE' ? 'femeie' : 'gen nespecificat';
+  }
+
+  private treeRelationship(slot: TreeSlot, family: Family, primaryId: number, personId: number): FamilyRelationshipRequest | null {
+    if (this.isGrandparentSlot(slot)) {
+      const parentId = this.treeGrandparentParent(family, slot);
+      return parentId ? { personAId: personId, personBId: parentId, type: 'PARENT_CHILD' } : null;
+    }
+    if (slot === 'father' || slot === 'mother') {
+      return { personAId: personId, personBId: primaryId, type: 'PARENT_CHILD' };
+    }
+    if (slot === 'child') {
+      return { personAId: primaryId, personBId: personId, type: 'PARENT_CHILD' };
+    }
+    if (slot === 'grandchild') {
+      const parentId = this.treeGrandchildParentId || this.treeChildren(family)[0]?.id;
+      return parentId
+        ? { personAId: parentId, personBId: personId, type: 'PARENT_CHILD' }
+        : null;
+    }
+    if (slot === 'sibling') {
+      return { personAId: primaryId, personBId: personId, type: 'SIBLING' };
+    }
+    if (slot === 'spouse') {
+      return { personAId: primaryId, personBId: personId, type: 'SPOUSE' };
+    }
+    return null;
+  }
+
+  private treeRole(slot: TreeSlot, person: Person): FamilyRole {
+    if (slot === 'paternalGrandfather' || slot === 'maternalGrandfather') {
+      return 'GRANDFATHER';
+    }
+    if (slot === 'paternalGrandmother' || slot === 'maternalGrandmother') {
+      return 'GRANDMOTHER';
+    }
+    if (slot === 'father') {
+      return 'FATHER';
+    }
+    if (slot === 'mother') {
+      return 'MOTHER';
+    }
+    if (slot === 'child' || slot === 'grandchild') {
+      return 'CHILD';
+    }
+    if (slot === 'spouse') {
+      return person.gender === 'MALE' ? 'HUSBAND' : person.gender === 'FEMALE' ? 'WIFE' : 'OTHER';
+    }
+    return 'OTHER';
+  }
+
+  private isGrandparentSlot(slot: TreeSlot): boolean {
+    return slot === 'paternalGrandfather'
+      || slot === 'paternalGrandmother'
+      || slot === 'maternalGrandfather'
+      || slot === 'maternalGrandmother';
+  }
+
+  private treeGrandparentParent(family: Family, slot: TreeSlot): number | null {
+    if (slot === 'paternalGrandfather' || slot === 'paternalGrandmother') {
+      return this.treeParent(family, 'MALE')?.id || null;
+    }
+    if (slot === 'maternalGrandfather' || slot === 'maternalGrandmother') {
+      return this.treeParent(family, 'FEMALE')?.id || null;
+    }
+    return null;
+  }
+
+  private ensureTreeMember(family: Family, person: Person, role: FamilyRole) {
+    const existing = family.members.find((member) => member.personId === person.id);
+    if (!existing) {
+      return this.familiesService.addMember(family.id, {
+        personId: person.id,
+        role,
+        primaryMember: false
+      });
+    }
+    if (existing.role === role) {
+      return of(family);
+    }
+    return this.familiesService.updateMember(family.id, existing.id, {
+      personId: existing.personId,
+      role,
+      primaryMember: existing.primaryMember
+    });
+  }
+
+  private ensurePrimaryTreeMember(family: Family, person: Person) {
+    const existing = family.members.find((member) => member.personId === person.id);
+    if (!existing) {
+      return this.familiesService.addMember(family.id, {
+        personId: person.id,
+        role: 'OTHER',
+        primaryMember: true
+      });
+    }
+    if (existing.primaryMember) {
+      return of(family);
+    }
+    return this.familiesService.updateMember(family.id, existing.id, {
+      personId: existing.personId,
+      role: existing.role,
+      primaryMember: true
+    });
+  }
+
+  private addTreeRelationship(family: Family, relationship: FamilyRelationshipRequest) {
+    if (family.relationships.some((existing) => this.sameRelationship(
+      existing,
+      relationship.personAId,
+      relationship.personBId,
+      relationship.type))) {
+      return of(family);
+    }
+    return this.familiesService.addRelationship(family.id, relationship);
+  }
+
+  private relatedIds(
+    family: Family,
+    type: FamilyRelationshipType,
+    personId: number,
+    direction: 'parent' | 'child'
+  ): number[] {
+    return family.relationships
+      .filter((relationship) => relationship.type === type
+        && (direction === 'parent' ? relationship.personBId === personId : relationship.personAId === personId))
+      .map((relationship) => direction === 'parent' ? relationship.personAId : relationship.personBId);
+  }
+
+  private peopleForIds(ids: number[]): Person[] {
+    return [...new Set(ids)]
+      .map((id) => this.personById(id))
+      .filter((person): person is Person => !!person);
+  }
+
+  private personById(id: number): Person | null {
+    return this.persons().find((person) => person.id === id) || null;
+  }
+
   previewMembers(family: Family): FamilyMember[] {
     return this.sortedMembers(family).slice(0, 3);
   }
@@ -1003,10 +1441,14 @@ export class FamiliesComponent implements OnInit {
     const roleOrder: Record<FamilyRole, number> = {
       HUSBAND: 1,
       WIFE: 2,
-      PARENT: 3,
-      CHILD: 4,
-      WIDOWED: 5,
-      OTHER: 6
+      FATHER: 3,
+      MOTHER: 4,
+      GRANDFATHER: 5,
+      GRANDMOTHER: 6,
+      PARENT: 7,
+      CHILD: 8,
+      WIDOWED: 9,
+      OTHER: 10
     };
     return [...family.members].sort((a, b) => {
       if (a.primaryMember !== b.primaryMember) {
@@ -1028,6 +1470,10 @@ export class FamiliesComponent implements OnInit {
     const labels: Record<FamilyRole, string> = {
       HUSBAND: 'soț',
       WIFE: 'soție',
+      FATHER: 'tată',
+      MOTHER: 'mamă',
+      GRANDFATHER: 'bunic',
+      GRANDMOTHER: 'bunică',
       PARENT: 'părinte',
       CHILD: 'copil',
       WIDOWED: 'văduv(ă)',
@@ -1039,17 +1485,27 @@ export class FamiliesComponent implements OnInit {
   relationshipTypeLabel(type: FamilyRelationshipType): string {
     const labels: Record<FamilyRelationshipType, string> = {
       SPOUSE: 'soți',
-      PARENT_CHILD: 'părinte - copil'
+      PARENT_CHILD: 'părinte - copil',
+      SIBLING: 'frați / surori'
     };
     return labels[type];
   }
 
   relationshipTypeDescription(type: FamilyRelationshipType): string {
-    return type === 'SPOUSE' ? 'relație simetrică' : 'direcție părinte - copil';
+    if (type === 'SPOUSE') {
+      return 'relație simetrică';
+    }
+    if (type === 'SIBLING') {
+      return 'relație simetrică';
+    }
+    return 'direcție părinte - copil';
   }
 
   relationshipLabel(relationship: FamilyRelationship): string {
     if (relationship.type === 'SPOUSE') {
+      return `${relationship.personAName} ↔ ${relationship.personBName}`;
+    }
+    if (relationship.type === 'SIBLING') {
       return `${relationship.personAName} ↔ ${relationship.personBName}`;
     }
     return `${relationship.personAName} → ${relationship.personBName}`;
@@ -1104,6 +1560,7 @@ export class FamiliesComponent implements OnInit {
     const candidates = family.members.filter((member) => member.personId !== excludePersonId);
     return candidates.find((member) => member.primaryMember)
       || candidates.find((member) => member.role === 'PARENT')
+      || candidates.find((member) => member.role === 'FATHER' || member.role === 'MOTHER')
       || candidates.find((member) => member.role === 'HUSBAND')
       || candidates.find((member) => member.role === 'WIFE')
       || candidates[0]
@@ -1119,7 +1576,7 @@ export class FamiliesComponent implements OnInit {
     if (relationship.type !== type) {
       return false;
     }
-    if (type === 'SPOUSE') {
+    if (type === 'SPOUSE' || type === 'SIBLING') {
       return (relationship.personAId === personAId && relationship.personBId === personBId)
         || (relationship.personAId === personBId && relationship.personBId === personAId);
     }
@@ -1133,3 +1590,5 @@ export class FamiliesComponent implements OnInit {
       .replace(/[\u0300-\u036f]/g, '');
   }
 }
+
+type TreeSlot = 'primary' | 'father' | 'mother' | 'paternalGrandfather' | 'paternalGrandmother' | 'maternalGrandfather' | 'maternalGrandmother' | 'spouse' | 'sibling' | 'child' | 'grandchild';

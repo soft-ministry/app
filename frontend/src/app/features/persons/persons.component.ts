@@ -1138,6 +1138,7 @@ export class PersonsComponent implements OnInit, OnDestroy {
       maxWidth: 'calc(100vw - 32px)',
       data: {
         person,
+        people: this.persons(),
         groups: this.groupsFor(person),
         families: this.families()
       }
